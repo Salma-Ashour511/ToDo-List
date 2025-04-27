@@ -9,13 +9,16 @@ import UIKit
 
 class ListViewController: UIViewController {
 
-    var listArray: [String] = []
     @IBOutlet weak var tasksTableView: UITableView!
+    
+    var dataManager = CoreDataManager()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         tasksTableView.delegate = self
         tasksTableView.dataSource = self
+        
+        dataManager.fetchCategories()
     }
 
     @IBAction func newListButtonClicked(_ sender: UIButton) {
@@ -23,7 +26,12 @@ class ListViewController: UIViewController {
         let alert = UIAlertController(title: "Add new List", message: "Type your list name here..", preferredStyle: .alert)
         let action = UIAlertAction(title: "Done", style: .default) { action  in
             if let newList = textField.text, !newList.isEmpty {
-                self.listArray.append(newList)
+                let newCategory = Category(context: self.dataManager.context)
+                newCategory.title = newList
+                
+                self.dataManager.categories.append(newCategory)
+                self.dataManager.saveContext()
+                
                 self.tasksTableView.reloadData()
             }
         }
@@ -45,14 +53,14 @@ extension ListViewController: UITableViewDelegate, UITableViewDataSource {
         return "MY LISTS"
     }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        listArray.count
+        dataManager.categories.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "listCell") else { return UITableViewCell() }
         var content = cell.defaultContentConfiguration()
 
-        content.text = listArray[indexPath.row]
+        content.text = dataManager.categories[indexPath.row].title
         content.image = UIImage(systemName: "list.bullet")
         content.imageProperties.tintColor = UIColor.random
         
@@ -65,10 +73,13 @@ extension ListViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         if let viewController = UIStoryboard(name: "Main", bundle: .main).instantiateViewController(withIdentifier: "ItemViewController") as? ItemViewController {
                 if let navigator = navigationController {
-                    viewController.title = listArray[indexPath.row]
+                    viewController.title = dataManager.categories[indexPath.row].title
+                    viewController.selectedCategory = dataManager.categories[indexPath.row]
                     navigator.pushViewController(viewController, animated: true)
                 }
             }
     }
+    
+    
 }
 
