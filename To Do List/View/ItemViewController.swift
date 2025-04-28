@@ -11,38 +11,53 @@ class ItemViewController: UIViewController {
    
     @IBOutlet weak var itemsTableView: UITableView!
 
-    var dataManager = CoreDataManager()
-    var selectedCategory: Category? {
-        didSet{
-            dataManager.fetchItems(categoryTitle: selectedCategory?.title ?? "")
-        }
-    }
+    private var presenter: ItemPresenterProtocol!
+    
+    // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupTableView()
+        
+        if presenter != nil {
+            presenter.viewDidLoad()
+        }
+    }
+    
+    // MARK: - Setup
+    
+    func configure(with category: Category) {
+        presenter = DependencyContainer.shared.makeItemPresenter(category: category)
+        presenter.view = self
+        title = presenter.categoryTitle
+        
+        // If view is already loaded, trigger presenter viewDidLoad
+        if isViewLoaded {
+            presenter.viewDidLoad()
+        }
+    }
+    
+    private func setupTableView() {
         itemsTableView.delegate = self
         itemsTableView.dataSource = self
     }
 
+    // MARK: - Actions
+    
     @IBAction func newItemButtonClicked(_ sender: UIButton) {
         var textField = UITextField()
         let alert = UIAlertController(title: "Add new Item", message: "Type your Item name here..", preferredStyle: .alert)
-        let action = UIAlertAction(title: "Done", style: .default) { action  in
-            if let newItem = textField.text, !newItem.isEmpty {
-                let item = Item(context: self.dataManager.context)
-                item.title = newItem
-                item.done = false
-                item.parentCategory = self.selectedCategory
-                
-                self.dataManager.items.append(item)
-                self.dataManager.saveContext()
-                
-                self.itemsTableView.reloadData()
+        let action = UIAlertAction(title: "Done", style: .default) { [weak self] action in
+            guard let self = self else { return }
+            
+            if let newItemName = textField.text, !newItemName.isEmpty {
+                self.presenter.addNewItem(title: newItemName)
             }
         }
+        
         alert.addAction(action)
         alert.addTextField { alertTextField in
-            textField.placeholder = "Title"
+            alertTextField.placeholder = "Title"
             textField = alertTextField
         }
         
@@ -50,25 +65,48 @@ class ItemViewController: UIViewController {
     }
 }
 
+// MARK: - ItemViewProtocol
+
+extension ItemViewController: ItemViewProtocol {
+    func reloadData() {
+        itemsTableView.reloadData()
+    }
+    
+    func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "OK", style: .default)
+        alert.addAction(okAction)
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - UITableViewDelegate, UITableViewDataSource
+
 extension ItemViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
+    
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         return "MY ITEMS"
     }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        dataManager.items.count
+        return presenter.numberOfItems
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "itemCell") else { return UITableViewCell() }
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "itemCell") else { 
+            return UITableViewCell() 
+        }
+        
         var content = cell.defaultContentConfiguration()
-
-        content.text = dataManager.items[indexPath.row].title
-        content.image = dataManager.items[indexPath.row].done ?
-        UIImage(systemName: "checkmark.circle.fill") :
-        UIImage(systemName: "circle")
+        content.text = presenter.getItemTitle(at: indexPath.row)
+        
+        let isDone = presenter.isItemDone(at: indexPath.row)
+        content.image = isDone ?
+            UIImage(systemName: "checkmark.circle.fill") :
+            UIImage(systemName: "circle")
         
         content.imageProperties.tintColor = UIColor(red: 0.99, green: 0.79, blue: 0.43, alpha: 1.0)
         cell.contentConfiguration = content
@@ -77,24 +115,17 @@ extension ItemViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        dataManager.updateItem(at: indexPath.row)
-        
-        tableView.reloadData()
-    }
-    
-    private func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        return true
+        presenter.updateItem(at: indexPath.row)
+        tableView.deselectRow(at: indexPath, animated: true)
     }
     
     func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
-        .delete
+        return .delete
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            dataManager.delete(at: indexPath.row)
-            
-            tableView.reloadData()
+            presenter.deleteItem(at: indexPath.row)
         }
     }
 }

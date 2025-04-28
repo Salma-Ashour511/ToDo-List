@@ -8,13 +8,12 @@
 import UIKit
 import CoreData
 
-class CoreDataManager {
-    var items = [Item]()
-    var categories = [Category]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-
-    // save
-    func saveContext() {
+class CoreDataManager: DataManagerProtocol {
+    private let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    // MARK: - Save Context
+    
+    func saveChanges() {
         do {
             try context.save()
         } catch {
@@ -22,37 +21,57 @@ class CoreDataManager {
         }
     }
     
-    // fetch
-    func fetchCategories(with request: NSFetchRequest<Category> = Category.fetchRequest()) {
-        do {
-            categories = try context.fetch(request)
-        } catch {
-            print("Error saving context: \(error)")
-        }
-    }
+    // MARK: - Category Operations
     
-    func fetchItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), categoryTitle: String) {
-        let categoryPredicate = NSPredicate(format: "parentCategory.title MATCHES %@", categoryTitle)
-        request.predicate = categoryPredicate
+    func fetchAllCategories() -> [Category] {
+        let request: NSFetchRequest<Category> = Category.fetchRequest()
         
         do {
-            items = try context.fetch(request)
+            return try context.fetch(request)
         } catch {
-            print("Error saving context: \(error)")
+            print("Error fetching categories: \(error)")
+            return []
         }
     }
     
-    // update
-    func updateItem(at index: Int) {
-        items[index].done = !items[index].done
-        saveContext()
+    func saveCategory(title: String) -> Category {
+        let newCategory = Category(context: context)
+        newCategory.title = title
+        saveChanges()
+        return newCategory
     }
     
+    // MARK: - Item Operations
     
-    //delete
-    func delete(at index: Int) {
-        context.delete(items[index])
-        items.remove(at: index)
-        saveContext()
+    func fetchItems(for category: Category) -> [Item] {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        let predicate = NSPredicate(format: "parentCategory.title MATCHES %@", category.title ?? "")
+        request.predicate = predicate
+        
+        do {
+            return try context.fetch(request)
+        } catch {
+            print("Error fetching items: \(error)")
+            return []
+        }
+    }
+    
+    func saveItem(title: String, in category: Category) -> Item {
+        let newItem = Item(context: context)
+        newItem.title = title
+        newItem.done = false
+        newItem.parentCategory = category
+        saveChanges()
+        return newItem
+    }
+    
+    func toggleItemStatus(item: Item) {
+        item.done = !item.done
+        saveChanges()
+    }
+    
+    func deleteItem(item: Item) {
+        context.delete(item)
+        saveChanges()
     }
 }
