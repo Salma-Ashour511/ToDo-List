@@ -110,6 +110,7 @@ extension ItemViewController: UITableViewDelegate, UITableViewDataSource {
         
         content.imageProperties.tintColor = UIColor(red: 0.99, green: 0.79, blue: 0.43, alpha: 1.0)
         cell.contentConfiguration = content
+        cell.selectionStyle = .none
         
         return cell
     }

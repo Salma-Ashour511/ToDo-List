@@ -100,6 +100,7 @@ extension ListViewController: UITableViewDelegate, UITableViewDataSource {
         
         cell.contentConfiguration = content
         cell.accessoryType = .disclosureIndicator
+        cell.selectionStyle = .none
         
         return cell
     }
