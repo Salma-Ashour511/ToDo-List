@@ -122,4 +122,11 @@ This approach enhances testability and allows for easy replacement of implementa
 5. **Error Handling**: Add proper error handling throughout the application
 6. **Advanced DI**: Implement dependency injection with a proper DI framework
 7. **Multiple Storage Options**: Add persistence layer abstraction to support multiple storage options
-8. **Sync Capabilities**: Add cloud synchronization features 
+8. **Sync Capabilities**: Add cloud synchronization features
+
+## App Demo
+
+
+https://github.com/user-attachments/assets/b1c9f421-bf7b-47d9-8d45-71ed10194700
+
+
